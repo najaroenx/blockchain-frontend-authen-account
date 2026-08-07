@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.yarn/install-state.gz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# never bake local/secret env values into the build context
+.env
+.env.local
+.env.*.local
+
+*.md
+.vscode
+.idea
