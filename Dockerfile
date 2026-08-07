@@ -25,8 +25,10 @@ COPY . .
 # unused here would just be dead weight.
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SKIP_OTP_VERIFICATION=false
+ARG NEXT_PUBLIC_BASE_PATH=""
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SKIP_OTP_VERIFICATION=$NEXT_PUBLIC_SKIP_OTP_VERIFICATION
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 # =======================================
 
 RUN yarn build
@@ -35,6 +37,7 @@ RUN yarn build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
 
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
