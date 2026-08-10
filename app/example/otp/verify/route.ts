@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     const { phoneNumber, merchantId, otpCode } = body;
 
     // Step 1: verify the OTP (skipped only outside production, see
-    // app/verifyPhone/PinOTP.tsx SKIP_OTP_VERIFICATION for the client side
+    // app/otp/PinOTP.tsx SKIP_OTP_VERIFICATION for the client side
     // of this same bypass).
     if (
       process.env.NODE_ENV !== "production" &&

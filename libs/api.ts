@@ -2,11 +2,16 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-// Used by client components to build a URL to *this* app's own /api routes.
+// Used by client components to build a URL to *this* app's own /api routes
+// — NOT the merchant backend (that's MERCHANT_BACKEND, called server-side
+// only by api() below). Only set NEXT_PUBLIC_API_URL if the frontend and
+// this app's own /api/* routes are deployed to different origins; leave it
+// unset (the common case, including local dev) to call them same-origin.
 export const apiUrl = (path: string) => {
-  // Local dev: NEXT_PUBLIC_API_URL points at the dev server directly
   if (API_BASE_URL) return `${API_BASE_URL}${path}`;
-  // Production with basePath: prepend basePath for internal routes
+  // No absolute origin configured: same-origin relative call, still needs
+  // basePath prepended by hand since Next.js only auto-prefixes things it
+  // renders itself (Link, next/image, etc.), not raw fetch() calls.
   return path.startsWith("/") ? `${basePath}${path}` : path;
 };
 
@@ -16,9 +21,12 @@ interface ApiRequestOptions {
   headers?: Record<string, string>;
 }
 
-// TODO: this shape (flat, keyed straight off the parsed JSON body) is
-// inferred from how the otp route handlers use it — it has not been
-// confirmed against the real merchant backend's response envelope.
+// Confirmed (2026-08-10, against a live backend) envelope:
+// { statusCode, status: "success" | "error", message, data: {...} }.
+// `statusCode`/`status`/`message` are always top-level; the actual payload
+// on success is nested under `data` — callers must reach into `.data` for
+// individual fields (see app/api/otp/request/route.ts), not read them off
+// the top level directly.
 export interface ApiResponse {
   status?: string;
   statusCode?: number;

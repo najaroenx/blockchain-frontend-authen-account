@@ -5,12 +5,12 @@ import logger from "@/libs/logger";
 
 // TODO: confirm this against the real merchant backend deployment. Falls
 // back to a local dev backend so this at least fails predictably.
-const BACKEND_URL = process.env.MERCHANT_BACKEND || "http://localhost:4000";
+const BACKEND_URL = process.env.MERCHANT_BACKEND || "http://localhost:4004";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phoneNumber, requestId, merchantId } = body;
+    const { phoneNumber, requestId } = body;
 
     if (!phoneNumber || phoneNumber.length !== 10) {
       return handleError("หมายเลขโทรศัพท์ไม่ถูกต้อง", 400);
@@ -19,21 +19,36 @@ export async function POST(request: NextRequest) {
     // TODO: decide whether re-requesting an OTP for a phone number that
     // already has an account should be blocked here, or left to the
     // verify step. Deferred for now — always sends a fresh OTP.
+    //
+    // Confirmed (2026-08-10, against a live backend) this endpoint rejects
+    // unknown body properties outright (400: "property merchantId should
+    // not exist") — merchantId isn't part of its schema, don't send it.
     const response = await api(`${BACKEND_URL}/templink/send-otp`, {
       method: "POST",
-      body: { requestId, phoneNumber, merchantId },
+      body: { requestId, phoneNumber },
     });
+    logger.info(`POST ${BACKEND_URL}/templink/send-otp -> ${JSON.stringify(response)}`);
 
-    if (response.status === "error" || response.statusCode === 404) {
+    // Was only checking statusCode === 404 — a 400 (e.g. validation
+    // rejection) fell through unnoticed and this handler returned a fake
+    // "success" to the frontend even though no OTP was ever sent.
+    const statusCode = response.statusCode ?? 200;
+    if (response.status === "error" || statusCode >= 400) {
       logger.error(`OTP request failed: ${JSON.stringify(response)}`);
       return handleError("เกิดข้อผิดพลาดในการส่ง OTP", 500);
     }
 
+    // Confirmed (2026-08-10, against a live backend) the payload is nested
+    // under `data`, not flat — see the GET handler below for the same fix.
+    const payload = response.data as
+      | { otp?: string; verificationId?: string }
+      | undefined;
+
     return NextResponse.json(
       {
         message: "สามารถลงทะเบียนใหม่ได้",
-        otp: response.otp,
-        verificationId: response.verificationId,
+        otp: payload?.otp,
+        verificationId: payload?.verificationId,
       },
       { status: 200 }
     );
@@ -58,6 +73,7 @@ export async function GET(request: NextRequest) {
     const response = await api(`${BACKEND_URL}/templink/${requestId}`, {
       method: "GET",
     });
+    logger.info(`GET ${BACKEND_URL}/templink/${requestId} -> ${JSON.stringify(response)}`);
 
     if (response.status === "error") {
       logger.error(`Failed to reach backend for GET /api/otp/request: ${JSON.stringify(response)}`);
@@ -68,7 +84,19 @@ export async function GET(request: NextRequest) {
       return handleError("Invalid RequestId", 404);
     }
 
-    const { uid, phoneNumber, expire, merchantId } = response;
+    // Confirmed (2026-08-10, against a live backend) the payload is nested
+    // under `data`, e.g. { statusCode, status, message, data: { uid, ... } }
+    // — reading these straight off `response` was always undefined, which
+    // made every valid, non-expired requestId look expired.
+    const payload = response.data as
+      | { uid?: string; phoneNumber?: string; expire?: string; merchantId?: string }
+      | undefined;
+
+    if (!payload) {
+      return handleError("Invalid RequestId", 404);
+    }
+
+    const { uid, phoneNumber, expire, merchantId } = payload;
 
     const expireTime = new Date(expire as string).getTime();
     if (Number.isNaN(expireTime) || expireTime < Date.now()) {

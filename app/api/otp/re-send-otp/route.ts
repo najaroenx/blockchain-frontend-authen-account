@@ -26,8 +26,12 @@ export async function POST(request: NextRequest) {
       return handleError("เกิดข้อผิดพลาดในการส่ง OTP อีกครั้ง", 400);
     }
 
+    // Confirmed (2026-08-10, against a live backend) the payload is nested
+    // under `data`, not flat — see app/api/otp/request/route.ts.
+    const payload = response.data as { otp?: string } | undefined;
+
     return NextResponse.json(
-      { message: "ส่ง OTP อีกครั้งสำเร็จ", otp: response.otp },
+      { message: "ส่ง OTP อีกครั้งสำเร็จ", otp: payload?.otp },
       { status: 200 }
     );
   } catch (error) {
