@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { VerifyPhoneStep } from "./VerifyPhone";
 import { useVerifyPhone } from "@/contexts/VerifyPhoneContext";
-import { apiUrl } from "@/libs/api";
+import { apiUrl, withBasePath } from "@/libs/api";
 import InputOTP from "./InputOTP";
 
 const PinPhoneNumber = ({
@@ -104,7 +104,7 @@ const PinPhoneNumber = ({
       {/* Image */}
       <div className="relative w-[180px] h-[180px] mt-8">
         <Image
-          src="/images/fill-phone-number.png"
+          src={withBasePath("/images/fill-phone-number.png")}
           alt="กรอกหมายเลขโทรศัพท์"
           fill
           className="object-cover"
@@ -167,7 +167,7 @@ const PinPhoneNumber = ({
           }`}
         >
           <Image
-            src="/images/fill-phone-button.png"
+            src={withBasePath("/images/fill-phone-button.png")}
             alt="รับรหัส OTP"
             fill
             className="object-cover"

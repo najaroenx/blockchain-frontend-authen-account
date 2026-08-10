@@ -2,6 +2,15 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
+// Next.js auto-prefixes basePath for things it renders itself, like <Link>
+// — but NOT for next/image's `src`, and obviously not for raw fetch() URLs
+// either (both need it prepended by hand). Confirmed live (2026-08-10):
+// next/image without this returned 400 "isn't a valid image" in production,
+// because the optimizer's `url` param pointed at a path that only exists
+// under the basePath. See https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath#images
+export const withBasePath = (path: string) =>
+  path.startsWith("/") ? `${basePath}${path}` : path;
+
 // Used by client components to build a URL to *this* app's own /api routes
 // — NOT the merchant backend (that's MERCHANT_BACKEND, called server-side
 // only by api() below). Only set NEXT_PUBLIC_API_URL if the frontend and
@@ -9,10 +18,7 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 // unset (the common case, including local dev) to call them same-origin.
 export const apiUrl = (path: string) => {
   if (API_BASE_URL) return `${API_BASE_URL}${path}`;
-  // No absolute origin configured: same-origin relative call, still needs
-  // basePath prepended by hand since Next.js only auto-prefixes things it
-  // renders itself (Link, next/image, etc.), not raw fetch() calls.
-  return path.startsWith("/") ? `${basePath}${path}` : path;
+  return withBasePath(path);
 };
 
 interface ApiRequestOptions {
